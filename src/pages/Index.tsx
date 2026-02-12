@@ -26,10 +26,25 @@ const Index = () => {
     });
   }, [searchQuery, selectedCategory]);
 
+  const suggestions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    const titles = snippets
+      .filter((s) => s.title.toLowerCase().includes(q) || s.description.toLowerCase().includes(q))
+      .map((s) => s.title);
+    // unique and limit
+    return Array.from(new Set(titles)).slice(0, 6);
+  }, [searchQuery]);
+
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
-      <Hero searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+      <Hero
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        suggestions={suggestions}
+        onSelectSuggestion={(v) => setSearchQuery(v)}
+      />
 
       {/* All-Access Banner */}
       <section className="border-b">

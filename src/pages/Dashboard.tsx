@@ -2,8 +2,25 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Package, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
+import { snippets } from "@/data/snippets";
+import ProductCard from "@/components/ProductCard";
 
-const Dashboard = () => {
+import { useEffect, useMemo, useState } from "react";
+
+  const [purchasedIds, setPurchasedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("purchases");
+      const parsed: string[] = raw ? JSON.parse(raw) : [];
+      setPurchasedIds(parsed);
+    } catch (e) {
+      setPurchasedIds([]);
+    }
+  }, []);
+
+  const mySnippets = useMemo(() => snippets.filter((s) => purchasedIds.includes(s.id)), [purchasedIds]);
+
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
@@ -37,22 +54,32 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Empty State */}
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed py-20">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary">
-              <Package className="h-8 w-8 text-muted-foreground" />
+          {mySnippets.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed py-20">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary">
+                <Package className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="mb-1 text-lg font-semibold">No snippets yet</h3>
+              <p className="mb-6 text-sm text-muted-foreground">
+                Purchase snippets or subscribe to access them here
+              </p>
+              <Link
+                to="/"
+                className="inline-flex h-10 items-center rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Browse Snippets
+              </Link>
             </div>
-            <h3 className="mb-1 text-lg font-semibold">No snippets yet</h3>
-            <p className="mb-6 text-sm text-muted-foreground">
-              Purchase snippets or subscribe to access them here
-            </p>
-            <Link
-              to="/"
-              className="inline-flex h-10 items-center rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              Browse Snippets
-            </Link>
-          </div>
+          ) : (
+            <div>
+              <h2 className="mb-6 text-xl font-semibold">Purchased Snippets</h2>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {mySnippets.map((s) => (
+                  <ProductCard key={s.id} snippet={s} />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Auth prompt */}
           <div className="mt-8 flex items-center gap-3 rounded-xl bg-secondary/50 p-4">
@@ -66,6 +93,7 @@ const Dashboard = () => {
 
       <Footer />
     </div>
+  );
   );
 };
 

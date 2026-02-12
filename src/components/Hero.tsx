@@ -3,9 +3,11 @@ import { Search } from "lucide-react";
 interface HeroProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  suggestions?: string[];
+  onSelectSuggestion?: (value: string) => void;
 }
 
-const Hero = ({ searchQuery, onSearchChange }: HeroProps) => {
+const Hero = ({ searchQuery, onSearchChange, suggestions = [], onSelectSuggestion }: HeroProps) => {
   return (
     <section className="relative overflow-hidden border-b bg-secondary/30">
       <div className="container relative z-10 py-24 md:py-32">
@@ -32,6 +34,22 @@ const Hero = ({ searchQuery, onSearchChange }: HeroProps) => {
               onChange={(e) => onSearchChange(e.target.value)}
               className="h-14 w-full rounded-2xl border bg-background pl-12 pr-4 text-sm shadow-sm transition-shadow placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
+            {suggestions.length > 0 && searchQuery.trim() !== "" && (
+              <ul className="absolute left-0 right-0 z-20 mt-2 max-h-56 overflow-auto rounded-xl border bg-card p-2">
+                {suggestions.map((s) => (
+                  <li
+                    key={s}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onSelectSuggestion?.(s);
+                    }}
+                    className="cursor-pointer rounded-md px-3 py-2 text-sm hover:bg-accent"
+                  >
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       </div>

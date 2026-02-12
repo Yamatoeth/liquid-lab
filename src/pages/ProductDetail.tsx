@@ -4,12 +4,41 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { ArrowLeft, Check, Copy, Lock, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import SyntaxHighlighter from "@/components/SyntaxHighlighter";
+import { startCheckout } from "@/lib/stripeClient";
+import useSession from "@/hooks/useSession";
 
 const ProductDetail = () => {
   const { id } = useParams();
   const snippet = snippets.find((s) => s.id === id);
   const [copied, setCopied] = useState(false);
-  const [purchased] = useState(false);
+  const { toast } = useToast();
+
+  const { session } = useSession();
+  const [purchased, setPurchased] = useState(() => {
+    try {
+      const raw = localStorage.getItem("purchases");
+      if (!raw) return false;
+      const parsed: string[] = JSON.parse(raw);
+      return parsed.includes(id || "");
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const savePurchase = (snippetId: string) => {
+    try {
+      const raw = localStorage.getItem("purchases");
+      const parsed: string[] = raw ? JSON.parse(raw) : [];
+      if (!parsed.includes(snippetId)) {
+        parsed.push(snippetId);
+        localStorage.setItem("purchases", JSON.stringify(parsed));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   if (!snippet) {
     return (
@@ -78,7 +107,24 @@ const ProductDetail = () => {
                   <span className="text-sm text-muted-foreground">one-time</span>
                 </div>
 
-                <button className="flex h-12 w-full items-center justify-center rounded-xl bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                <button
+                  onClick={async () => {
+                    try {
+                      if (!id) throw new Error('Missing snippet id')
+                      await startCheckout({
+                        snippetId: id,
+                        amount: Number(snippet.price),
+                        email: session?.user?.email,
+                        successUrl: `${window.location.origin}/snippets/${id}?checkout=success`,
+                        cancelUrl: `${window.location.origin}/snippets/${id}?checkout=canceled`,
+                      })
+                    } catch (e: any) {
+                      console.error(e)
+                      toast({ title: 'Checkout failed', description: e?.message || 'Please try again.' })
+                    }
+                  }}
+                  className="flex h-12 w-full items-center justify-center rounded-xl bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                >
                   Buy this Snippet
                 </button>
 
@@ -122,13 +168,11 @@ const ProductDetail = () => {
                 </div>
 
                 <div className="relative">
-                  <pre className="overflow-x-auto p-6 font-mono text-xs leading-relaxed text-foreground/80">
-                    <code>{snippet.code}</code>
-                  </pre>
+                  <SyntaxHighlighter code={snippet.code} language="liquid" />
 
                   {!purchased && (
-                    <div className="absolute inset-0 flex items-end bg-gradient-to-t from-background via-background/80 to-transparent">
-                      <div className="w-full p-6 text-center">
+                    <div className="absolute inset-0 flex items-end">
+                      <div className="w-full p-6 text-center bg-background/90 backdrop-blur-sm rounded-t-2xl shadow-lg md:bg-transparent md:backdrop-blur-0 md:rounded-none md:shadow-none">
                         <Lock className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
                         <p className="text-sm font-medium">Purchase to unlock full code</p>
                         <p className="mt-1 text-xs text-muted-foreground">
