@@ -693,4 +693,197 @@ customElements.define('lazy-image', LazyImage)
 </script>`,
     features: ['Simple overlay', 'localStorage remember', 'Compliance helper'],
   },
+  {
+    id: 'css-gradient-hero',
+    title: 'CSS Gradient Hero',
+    description: 'A modern hero section using layered CSS gradients and a responsive layout.',
+    category: 'Header',
+    price: 0,
+    image: '',
+    code: `<section class="hero-graded">
+  <div class="hero-inner">
+    <h1>Craft beautiful storefronts</h1>
+    <p>Small components, big impact.</p>
+  </div>
+</section>
+<style>
+.hero-graded{padding:6rem 1rem;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(14,165,164,0.12),rgba(99,102,241,0.06)),linear-gradient(135deg,#06b6d4 0%,#8b5cf6 100%);border-radius:12px;text-align:center}
+.hero-graded .hero-inner h1{font-size:2.25rem;margin:0 0 .5rem}
+.hero-graded .hero-inner p{margin:0;color:rgba(0,0,0,0.6)}
+@media(min-width:768px){.hero-graded .hero-inner h1{font-size:3.25rem}}
+</style>`,
+    features: ['Pure CSS', 'Responsive', 'Theme-friendly'],
+  },
+  {
+    id: 'responsive-gallery',
+    title: 'Responsive Image Gallery (lazy)',
+    description: 'Grid gallery that lazy-loads images with IntersectionObserver and progressive blur placeholder.',
+    category: 'Media',
+    price: 0,
+    image: '',
+    code: `<div class="gallery">
+  <img data-src="/images/photo1.jpg" class="lazy" alt="" />
+  <img data-src="/images/photo2.jpg" class="lazy" alt="" />
+  <img data-src="/images/photo3.jpg" class="lazy" alt="" />
+</div>
+<style>
+.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.gallery img{width:100%;height:200px;object-fit:cover;background:#f2f2f2}
+</style>
+<script>
+  (function(){
+    const obs = new IntersectionObserver((entries, o)=>{
+      entries.forEach(e=>{
+        if (!e.isIntersecting) return;
+        const img = e.target;
+        const src = img.getAttribute('data-src');
+        if (src) { img.src = src; img.removeAttribute('data-src') }
+        o.unobserve(img);
+      })
+    }, { rootMargin: '100px' });
+    document.querySelectorAll('img.lazy').forEach(i=>obs.observe(i));
+  })();
+</script>`,
+    features: ['Lazy load', 'Grid layout', 'Progressive enhancement'],
+  },
+  {
+    id: 'product-carousel-css',
+    title: 'CSS Scroll-Snap Product Carousel',
+    description: 'Lightweight carousel using CSS scroll-snap for product previews (no JS required).',
+    category: 'Product Page',
+    price: 5,
+    image: '',
+    code: `<div class="snap-carousel" tabindex="0">
+  <div class="snap-item">Item 1</div>
+  <div class="snap-item">Item 2</div>
+  <div class="snap-item">Item 3</div>
+</div>
+<style>
+.snap-carousel{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;padding:12px}
+.snap-item{min-width:240px;scroll-snap-align:center;border-radius:8px;padding:16px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+</style>`,
+    features: ['No-JS carousel', 'Accessible', 'Mobile-friendly'],
+  },
+  {
+    id: 'cookie-consent',
+    title: 'Cookie Consent Banner',
+    description: 'Simple cookie banner that stores consent in localStorage and hides after acceptance.',
+    category: 'UX',
+    price: 0,
+    image: '',
+    code: `<div id="cookie-banner" style="display:none;position:fixed;left:12px;right:12px;bottom:12px;padding:12px;background:#111;color:#fff;border-radius:8px;z-index:999">
+  <span>We use cookies to improve your experience.</span>
+  <button id="cookie-accept" style="margin-left:12px">Accept</button>
+</div>
+<script>
+  (function(){
+    if (localStorage.getItem('ll_cookie_ok')) return;
+    const b = document.getElementById('cookie-banner'); b.style.display='flex';
+    document.getElementById('cookie-accept').addEventListener('click', ()=>{ localStorage.setItem('ll_cookie_ok','1'); b.remove() })
+  })();
+</script>`,
+    features: ['Privacy', 'localStorage', 'Easy to style'],
+  },
+  {
+    id: 'a11y-tabs',
+    title: 'Accessible Tabs (ARIA)',
+    description: 'Keyboard-accessible tabs pattern with ARIA roles and focus management.',
+    category: 'Accessibility',
+    price: 0,
+    image: '',
+    code: `<div role="tablist" aria-label="Sample Tabs">
+  <button role="tab" aria-selected="true" aria-controls="panel-1">Details</button>
+  <button role="tab" aria-selected="false" aria-controls="panel-2">Specs</button>
+</div>
+<div id="panel-1" role="tabpanel">Content 1</div>
+<div id="panel-2" role="tabpanel" hidden>Content 2</div>
+<script>
+  (function(){
+    const tabs = document.querySelectorAll('[role="tab"]');
+    tabs.forEach(t=>t.addEventListener('click', ()=>{
+      tabs.forEach(x=>{ x.setAttribute('aria-selected','false'); document.getElementById(x.getAttribute('aria-controls')).hidden = true })
+      t.setAttribute('aria-selected','true'); document.getElementById(t.getAttribute('aria-controls')).hidden = false;
+    }))
+  })();
+</script>`,
+    features: ['ARIA roles', 'Keyboard friendly', 'Small script'],
+  },
+  {
+    id: 'email-collect-modal',
+    title: 'Email Collect Modal',
+    description: 'Modal that collects email addresses and posts to `/contact` (progressive enhancement).',
+    category: 'Forms',
+    price: 0,
+    image: '',
+    code: `<div id="email-modal" hidden>
+  <form action="/contact" method="post">
+    <label>Email <input type="email" name="contact[email]" required /></label>
+    <button type="submit">Submit</button>
+  </form>
+</div>
+<script>document.getElementById('email-modal').hidden=false</script>`,
+    features: ['Progressive', 'Server-post', 'Modal-ready'],
+  },
+  {
+    id: 'serverless-webhook',
+    title: 'Server: Webhook Receiver (Node)',
+    description: 'Minimal Express webhook handler that validates a simple secret and logs payload.',
+    category: 'Backend',
+    price: 0,
+    image: '',
+    code: `const express = require('express')
+const app = express()
+app.use(express.json())
+app.post('/webhook', (req, res) => {
+  if (req.headers['x-my-secret'] !== process.env.WEBHOOK_SECRET) return res.status(401).end()
+  console.log('webhook', req.body)
+  res.status(200).json({ received: true })
+})
+app.listen(3000)`,
+    features: ['Express', 'Secret check', 'Logging'],
+  },
+  {
+    id: 'service-worker-cache',
+    title: 'Service Worker: Cache First',
+    description: 'Basic service worker that caches app shell and serves cache-first for navigation assets.',
+    category: 'PWA',
+    price: 0,
+    image: '',
+    code: `self.addEventListener('install', (e) => {
+  e.waitUntil(caches.open('ll-v1').then(c => c.addAll(['/','/index.html','/favicon-32.png'])));
+});
+self.addEventListener('fetch', (e) => {
+  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+});`,
+    features: ['Offline cache', 'Simple SW', 'PWA ready'],
+  },
+  {
+    id: 'form-honeypot',
+    title: 'Form Honeypot Anti-Spam',
+    description: 'Add a hidden honeypot field to forms and ignore submissions where it is filled.',
+    category: 'Forms',
+    price: 0,
+    image: '',
+    code: `<form action="/contact" method="post">
+  <input type="text" name="phone_number" style="display:none" tabindex="-1" />
+  <label>Name <input name="name" required /></label>
+  <label>Email <input name="email" type="email" required /></label>
+  <button type="submit">Send</button>
+</form>
+<!-- On server: ignore if phone_number is filled -->`,
+    features: ['Spam reduction', 'No JS required'],
+  },
+  {
+    id: 'svg-sprite',
+    title: 'SVG Sprite Usage',
+    description: 'Insert an inline SVG sprite and reference icons via `<use>` for small, crisp icons.',
+    category: 'Media',
+    price: 0,
+    image: '',
+    code: `<svg style="display:none">
+  <symbol id="icon-heart" viewBox="0 0 24 24"><path d="M12 21s-7-4.35-9-7.07C0 10.92 2.13 7 6 7c2.17 0 3.5 1.2 4 2.12C10.5 8.2 11.83 7 14 7c3.87 0 6 3.92 3 6.93C19 16.65 12 21 12 21z"/></symbol>
+</svg>
+<svg class="icon"><use href="#icon-heart"></use></svg>`,
+    features: ['SVG sprite', 'Small icons', 'Crisp rendering'],
+  },
 ];
