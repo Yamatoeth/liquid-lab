@@ -7,6 +7,16 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.warn("Supabase keys are not set. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.");
 }
 
-export const supabase = createClient(SUPABASE_URL || "", SUPABASE_ANON_KEY || "");
+export const supabase = createClient(
+  SUPABASE_URL || "",
+  SUPABASE_ANON_KEY || "",
+  {
+    auth: {
+      persistSession: true,
+      // disable automatic URL session handling to avoid inline-script/CSP issues
+      detectSessionInUrl: false,
+    },
+  }
+);
 
 export default supabase;

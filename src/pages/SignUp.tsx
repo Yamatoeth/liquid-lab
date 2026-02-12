@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import * as auth from "@/lib/auth";
+import auth from "@/lib/auth";
 
 const SignUp = () => {
   const [email, setEmail] = useState("");
@@ -22,8 +22,33 @@ const SignUp = () => {
     }
   };
 
+  const onGoogle = async () => {
+    try {
+      await auth.signInWithGoogle();
+    } catch (err) {
+      console.error(err);
+      alert('Google sign-up failed');
+    }
+  };
+
+  const onMagicLink = async () => {
+    if (!email) return alert('Enter your email to receive a sign-up link');
+    try {
+      await auth.sendMagicLink(email);
+      alert('Magic link sent — check your email');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to send magic link');
+    }
+  };
+
   return (
     <div className="max-w-md mx-auto mt-24 p-6 bg-white/80 rounded-lg shadow">
+      <div className="mb-4">
+        <button type="button" onClick={() => navigate(-1)} className="text-sm text-muted-foreground hover:underline">
+          ← Back
+        </button>
+      </div>
       <h2 className="text-2xl font-semibold mb-4">Create account</h2>
       <form onSubmit={submit} className="space-y-4">
         <div>
@@ -53,6 +78,10 @@ const SignUp = () => {
         >
           {loading ? "Creating..." : "Create account"}
         </button>
+        <div className="mt-3">
+          <button type="button" onClick={onGoogle} className="w-full border px-4 py-2 rounded mb-2">Continue with Google</button>
+          <button type="button" onClick={onMagicLink} className="w-full border px-4 py-2 rounded">Send sign-up link</button>
+        </div>
       </form>
     </div>
   );

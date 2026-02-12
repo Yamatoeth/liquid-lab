@@ -23,3 +23,15 @@ export async function getSession() {
 }
 
 export default { signUp, signIn, signOut, getSession };
+
+export async function signInWithGoogle() {
+  const { data, error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+  if (error) throw error;
+  return data;
+}
+
+export async function sendMagicLink(email: string) {
+  const { data, error } = await supabase.auth.signInWithOtp({ email });
+  if (error) throw error;
+  return data;
+}

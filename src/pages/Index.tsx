@@ -35,7 +35,6 @@ const Index = () => {
       <Hero
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        suggestions={suggestions}
         onSelectSuggestion={(v) => setSearchQuery(v)}
       />
 

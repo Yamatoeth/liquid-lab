@@ -9,9 +9,22 @@ export function useSession() {
 
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
+    (async () => {
+      // regular session (from storage/cookie)
+      const { data } = await supabase.auth.getSession();
       if (mounted) setSession(data.session ?? null);
-    });
+
+      // handle redirect result (OAuth/magic link) without relying on auto-injected inline scripts
+      try {
+        const { data: urlData, error: urlErr } = await supabase.auth.getSessionFromUrl({ storeSession: true });
+        if (!urlErr && urlData?.session && mounted) {
+          setSession(urlData.session);
+        }
+      } catch (e) {
+        // ignore; CSP/extension issues could surface here in some environments
+        console.debug('getSessionFromUrl:', e);
+      }
+    })();
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, sessionData) => {
       const s = sessionData?.session ?? null

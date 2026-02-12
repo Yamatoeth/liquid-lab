@@ -14,10 +14,14 @@ declare module "@/lib/auth" {
   export function signUp(email: string, password: string): Promise<any>;
   export function signIn(email: string, password: string): Promise<any>;
   export function signOut(): Promise<any>;
+  export function signInWithGoogle(): Promise<any>;
+  export function sendMagicLink(email: string): Promise<any>;
   const _default: {
     signUp: typeof signUp;
     signIn: typeof signIn;
     signOut: typeof signOut;
+    signInWithGoogle: typeof signInWithGoogle;
+    sendMagicLink: typeof sendMagicLink;
   };
   export default _default;
 }
