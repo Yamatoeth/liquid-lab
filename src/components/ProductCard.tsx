@@ -1,12 +1,30 @@
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Heart } from "lucide-react";
 import type { Snippet } from "@/data/snippets";
+import { useEffect, useState } from 'react'
+import { useSession } from '@/hooks/useSession'
+import { isFavorited, toggleFavorite } from '@/lib/favorites'
+import LoadingSpinner from './ui/LoadingSpinner'
+import { useToast } from '@/hooks/use-toast'
 
 interface ProductCardProps {
   snippet: Snippet;
 }
 
 const ProductCard = ({ snippet }: ProductCardProps) => {
+  const { session } = useSession()
+  const [fav, setFav] = useState(false)
+  const [favLoading, setFavLoading] = useState(false)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      const v = await isFavorited(snippet.id, session)
+      if (mounted) setFav(!!v)
+    })()
+    return () => { mounted = false }
+  }, [snippet.id, session])
   return (
     <Link
       to={`/snippet/${snippet.id}`}
@@ -34,10 +52,34 @@ const ProductCard = ({ snippet }: ProductCardProps) => {
         </p>
         <div className="flex items-center justify-between">
           <span className="text-lg font-bold">${snippet.price}</span>
-          <span className="flex items-center gap-1 text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-            View Details
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </span>
+          <div className="flex items-center gap-3">
+            <button
+              aria-label="Toggle favorite"
+              onClick={async (e) => {
+                e.preventDefault()
+                try {
+                  setFavLoading(true)
+                  const next = await toggleFavorite(snippet.id, session)
+                  setFav(!!next)
+                  toast({ title: next ? 'Added favorite' : 'Removed favorite' })
+                } catch (err: any) {
+                  console.error('Favorite toggle failed', err)
+                  toast({ title: 'Favorite failed', description: err?.message || 'Please try again.' })
+                } finally {
+                  setFavLoading(false)
+                }
+              }}
+              className="rounded p-1 text-muted-foreground hover:text-foreground"
+              disabled={favLoading}
+            >
+              {favLoading ? <LoadingSpinner size={14} /> : <Heart className={`h-4 w-4 ${fav ? 'text-red-500' : ''}`} />}
+            </button>
+
+            <span className="flex items-center gap-1 text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+              View Details
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </span>
+          </div>
         </div>
       </div>
     </Link>

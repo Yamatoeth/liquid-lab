@@ -5,6 +5,8 @@ import Footer from "@/components/Footer";
 import { ArrowLeft, Check, Copy, Lock, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import ErrorAlert from '@/components/ui/ErrorAlert'
 import SyntaxHighlighter from "@/components/SyntaxHighlighter";
 import { startCheckout } from "@/lib/stripeClient";
 import useSession from "@/hooks/useSession";
@@ -16,6 +18,8 @@ const ProductDetail = () => {
   const { toast } = useToast();
 
   const { session } = useSession();
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [purchased, setPurchased] = useState(() => {
     try {
       const raw = localStorage.getItem("purchases");
@@ -107,26 +111,39 @@ const ProductDetail = () => {
                   <span className="text-sm text-muted-foreground">one-time</span>
                 </div>
 
-                <button
-                  onClick={async () => {
-                    try {
-                      if (!id) throw new Error('Missing snippet id')
-                      await startCheckout({
-                        snippetId: id,
-                        amount: Number(snippet.price),
-                        email: session?.user?.email,
-                        successUrl: `${window.location.origin}/snippets/${id}?checkout=success`,
-                        cancelUrl: `${window.location.origin}/snippets/${id}?checkout=canceled`,
-                      })
-                    } catch (e: any) {
-                      console.error(e)
-                      toast({ title: 'Checkout failed', description: e?.message || 'Please try again.' })
-                    }
-                  }}
-                  className="flex h-12 w-full items-center justify-center rounded-xl bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  Buy this Snippet
-                </button>
+                <div>
+                  {checkoutError && (
+                    <div className="mb-3">
+                      <ErrorAlert message={checkoutError} />
+                    </div>
+                  )}
+                  <button
+                    onClick={async () => {
+                      setCheckoutError(null)
+                      try {
+                        if (!id) throw new Error('Missing snippet id')
+                        setCheckoutLoading(true)
+                        await startCheckout({
+                          snippetId: id,
+                          amount: Number(snippet.price),
+                          email: session?.user?.email,
+                          successUrl: `${window.location.origin}/snippets/${id}?checkout=success`,
+                          cancelUrl: `${window.location.origin}/snippets/${id}?checkout=canceled`,
+                        })
+                      } catch (e: any) {
+                        console.error(e)
+                        setCheckoutError(e?.message || 'Please try again.')
+                        toast({ title: 'Checkout failed', description: e?.message || 'Please try again.' })
+                      } finally {
+                        setCheckoutLoading(false)
+                      }
+                    }}
+                    className="flex h-12 w-full items-center justify-center rounded-xl bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                    disabled={checkoutLoading}
+                  >
+                    {checkoutLoading ? <LoadingSpinner /> : 'Buy this Snippet'}
+                  </button>
+                </div>
 
                 <button className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border text-sm font-medium transition-colors hover:bg-accent">
                   <Sparkles className="h-4 w-4" />

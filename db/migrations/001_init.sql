@@ -144,6 +144,13 @@ CREATE POLICY favorites_view_own ON favorites FOR SELECT USING (auth.uid() = use
 CREATE POLICY favorites_insert_own ON favorites FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY favorites_delete_own ON favorites FOR DELETE USING (auth.uid() = user_id);
 
+-- Recommendation: keep `favorites` RLS strict so users only mutate their own rows.
+-- For server-side processes (webhooks, admin tools) use the Supabase service_role key
+-- which bypasses RLS. Example server-side insertion uses the service role client:
+-- const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+-- supabaseAdmin.from('favorites').insert([{ user_id, snippet_id }])
+
+
 -- Basic helpers: create a role-check function (optional)
 -- You can extend profiles with an `is_admin` boolean and update the function accordingly.
 -- Example function to check admin via profiles.is_admin column (create column separately if used):

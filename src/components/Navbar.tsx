@@ -1,16 +1,41 @@
 import { Link } from "react-router-dom";
 import { Code2, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useToast } from '@/hooks/use-toast'
+import LoadingSpinner from './ui/LoadingSpinner'
 import { useSession } from "@/hooks/useSession";
 import auth from "@/lib/auth";
+import { getFavoritesCount } from '@/lib/favorites'
 
 const Navbar = () => {
   const { session } = useSession();
   const [email, setEmail] = useState<string | null>(null);
+  const [favCount, setFavCount] = useState(0)
+  const [favLoading, setFavLoading] = useState(false)
+  const [favError, setFavError] = useState<string | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     setEmail(session?.user?.email ?? null);
   }, [session]);
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        setFavLoading(true)
+        const c = await getFavoritesCount(session)
+        if (mounted) setFavCount(c)
+      } catch (e: any) {
+        console.warn('Failed to load favorites count', e)
+        setFavError(e?.message || 'Failed to load')
+        toast({ title: 'Favorites load failed', description: e?.message || 'Could not fetch favorites count.' })
+      } finally {
+        if (mounted) setFavLoading(false)
+      }
+    })()
+    return () => { mounted = false }
+  }, [session])
 
   const [open, setOpen] = useState(false)
 
@@ -26,8 +51,13 @@ const Navbar = () => {
           <Link to="/" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
             Browse
           </Link>
-          <Link to="/dashboard" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+          <Link to="/dashboard" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground flex items-center gap-2">
             My Library
+            {favCount > 0 && (
+              <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                {favLoading ? <LoadingSpinner size={12} /> : favCount}
+              </span>
+            )}
           </Link>
         </nav>
 

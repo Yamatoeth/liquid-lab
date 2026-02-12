@@ -45,10 +45,10 @@ LiquidMktplace development is organized into phases, from MVP to advanced featur
 - [ ] Subscription checkout flow
 - [ ] All-Access badge on snippet cards
 - [ ] User profile page
-- [ ] Favorites/bookmarking system
-- [ ] Enhanced search with autocomplete
-- [ ] Multi-category filtering
-- [ ] Featured snippets section
+- [x] Favorites/bookmarking system
+- [x] Enhanced search with autocomplete
+- [x] Multi-category filtering
+- [x] Featured snippets section
 - [ ] Loading states and error handling
 
 ### Technical Enhancements

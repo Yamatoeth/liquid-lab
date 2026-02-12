@@ -10,7 +10,7 @@ import { Link } from "react-router-dom";
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(["All"]);
 
   const filteredSnippets = useMemo(() => {
     return snippets.filter((snippet) => {
@@ -20,21 +20,14 @@ const Index = () => {
         snippet.description.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesCategory =
-        selectedCategory === "All" || snippet.category === selectedCategory;
+        selectedCategories.includes('All') || selectedCategories.includes(snippet.category);
 
       return matchesSearch && matchesCategory;
     });
-  }, [searchQuery, selectedCategory]);
+  }, [searchQuery, selectedCategories]);
 
-  const suggestions = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return [];
-    const titles = snippets
-      .filter((s) => s.title.toLowerCase().includes(q) || s.description.toLowerCase().includes(q))
-      .map((s) => s.title);
-    // unique and limit
-    return Array.from(new Set(titles)).slice(0, 6);
-  }, [searchQuery]);
+  // suggestions are provided by Supabase-backed autocomplete in the Hero component
+  const suggestions: string[] = []
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -45,6 +38,29 @@ const Index = () => {
         suggestions={suggestions}
         onSelectSuggestion={(v) => setSearchQuery(v)}
       />
+
+      {/* Featured Snippets */}
+      {(() => {
+        const featuredIds = ["mega-menu", "floating-cart", "sticky-atc"]
+        const featuredSnippets = snippets.filter((s) => featuredIds.includes(s.id))
+        if (featuredSnippets.length === 0) return null
+        return (
+          <section className="border-b">
+            <div className="container py-8">
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Featured Snippets</h2>
+                <Link to="/" className="text-sm text-muted-foreground">Explore all</Link>
+              </div>
+
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {featuredSnippets.map((snippet) => (
+                  <ProductCard key={snippet.id} snippet={snippet} />
+                ))}
+              </div>
+            </div>
+          </section>
+        )
+      })()}
 
       {/* All-Access Banner */}
       <section className="border-b">
@@ -82,8 +98,8 @@ const Index = () => {
               </p>
             </div>
             <CategoryFilter
-              selected={selectedCategory}
-              onSelect={setSelectedCategory}
+              selected={selectedCategories}
+              onChange={setSelectedCategories}
             />
           </div>
 
