@@ -49,7 +49,7 @@ export async function toggleFavorite(snippetId: string, session?: any) {
       return true
     } catch (e) {
       console.error('Favorites toggle error', e)
-      return false
+      throw e
     }
   }
 
@@ -67,7 +67,7 @@ export async function toggleFavorite(snippetId: string, session?: any) {
     }
   } catch (e) {
     console.error(e)
-    return false
+    throw e
   }
 }
 

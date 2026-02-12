@@ -16,8 +16,6 @@ LiquidMktplace development is organized into phases, from MVP to advanced featur
 - [x] Category filtering
 - [x] Basic search functionality
 - [x] Snippet detail page
-- [ ] Single snippet purchase flow
-- [x] Single snippet purchase flow
 - [x] Single snippet purchase flow
 - [x] Simple user dashboard ("My Library")
 - [x] Code display with syntax highlighting
@@ -41,22 +39,22 @@ LiquidMktplace development is organized into phases, from MVP to advanced featur
 **Timeline**: Weeks 5-7
 
 ### Features
-- [ ] Subscription plans (monthly/yearly)
-- [ ] Subscription checkout flow
+- [x] Subscription plans (monthly/yearly)
+- [x] Subscription checkout flow
 - [ ] All-Access badge on snippet cards
-- [ ] User profile page
+- [x] User profile page
 - [x] Favorites/bookmarking system
 - [x] Enhanced search with autocomplete
 - [x] Multi-category filtering
 - [x] Featured snippets section
-- [ ] Loading states and error handling
+- [x] Loading states and error handling
 
 ### Technical Enhancements
-- [ ] Stripe webhook integration
-- [ ] Subscription management
-- [ ] Customer portal integration
-- [ ] Real-time database subscriptions
-- [ ] Optimistic UI updates
+- [x] Stripe webhook integration
+- [x] Subscription management
+- [x] Customer portal integration
+- [x] Real-time database subscriptions
+- [x] Optimistic UI updates
 
 ### Success Criteria
 - Users can subscribe for full library access

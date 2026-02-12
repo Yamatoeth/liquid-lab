@@ -57,12 +57,20 @@ const ProductCard = ({ snippet }: ProductCardProps) => {
               aria-label="Toggle favorite"
               onClick={async (e) => {
                 e.preventDefault()
+                if (favLoading) return
+
+                const prev = fav
+                // optimistic update
+                setFav(!prev)
+                setFavLoading(true)
                 try {
-                  setFavLoading(true)
                   const next = await toggleFavorite(snippet.id, session)
+                  // toggleFavorite returns boolean for new state; update to be safe
                   setFav(!!next)
                   toast({ title: next ? 'Added favorite' : 'Removed favorite' })
                 } catch (err: any) {
+                  // rollback on error
+                  setFav(prev)
                   console.error('Favorite toggle failed', err)
                   toast({ title: 'Favorite failed', description: err?.message || 'Please try again.' })
                 } finally {

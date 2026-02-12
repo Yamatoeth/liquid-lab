@@ -51,6 +51,9 @@ const Navbar = () => {
           <Link to="/" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
             Browse
           </Link>
+          <Link to="/subscribe" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+            Subscribe
+          </Link>
           <Link to="/dashboard" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground flex items-center gap-2">
             My Library
             {favCount > 0 && (
