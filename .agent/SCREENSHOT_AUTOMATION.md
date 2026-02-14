@@ -1,175 +1,337 @@
-# Screenshot Automation Implementation
+# Screenshot Automation Audit - Project Alignment
 
-## Overview
+## Executive Summary
 
-This document provides the complete implementation for automated screenshot generation using Puppeteer. This replaces manual Shopify screenshots with a scalable, consistent process.
+After reviewing your actual LiquidMktplace project files, I've identified **critical misalignments** between the screenshot automation documentation and your current implementation. This document provides a corrected implementation plan.
 
 ---
 
-## Prerequisites
+## 🚨 Critical Issues Found
 
-```bash
-# Install required packages
-npm install puppeteer sharp @supabase/supabase-js dotenv
+### 1. **Data Structure Mismatch**
+
+**Documentation assumes:**
+```javascript
+{
+  slug: "mega-menu",
+  liquid_code: "...",
+  css_code: "...",
+  javascript_code: "..."
+}
 ```
 
-**Package purposes:**
-- `puppeteer`: Browser automation for screenshots
-- `sharp`: Image optimization and resizing
-- `@supabase/supabase-js`: Upload to Supabase Storage
-- `dotenv`: Environment variable management
+**Your actual Snippet interface (`snippets.ts`):**
+```typescript
+interface Snippet {
+  id: string;        // ✅ Similar to slug
+  title: string;
+  description: string;
+  category: string;
+  price: number;
+  image: string;     // ⚠️ Single image field
+  code: string;      // ⚠️ Single code field (not separated)
+  features: string[];
+}
+```
+
+**Impact:** 
+- Screenshot generator expects separate `liquid_code`, `css_code`, `javascript_code`
+- Your snippets have a single `code` field
+- **Need to parse/detect code type OR restructure data**
 
 ---
 
-## Project Structure
+### 2. **Missing Supabase Database Schema**
 
+**Documentation assumes Supabase tables:**
+- `snippets` table with fields: `slug`, `preview_image_url`, `screenshots[]`
+- Storage bucket: `snippet-assets`
+
+**Your actual setup:**
+- ❌ No database schema file found in project
+- ❌ No confirmation that Supabase is configured
+- ⚠️ Using hardcoded array in `snippets.ts` (not database-driven)
+
+**Impact:**
+- Can't upload screenshots to Supabase (bucket may not exist)
+- Can't update snippet records (table may not exist)
+- **Need to create database schema first**
+
+---
+
+### 3. **Image Field Not Used**
+
+**Current ProductCard component (lines 33-39):**
+```tsx
+<div className="aspect-[16/10] bg-secondary flex items-center justify-center overflow-hidden">
+  <div className="p-6 font-mono text-xs leading-relaxed text-muted-foreground opacity-60 group-hover:opacity-80 transition-opacity">
+    <pre className="whitespace-pre-wrap line-clamp-6">
+      {snippet.code.slice(0, 200)}...
+    </pre>
+  </div>
+</div>
+```
+
+**Issue:**
+- `snippet.image` exists in interface but is **empty string** in all snippets
+- UI currently shows **code preview** instead of screenshot
+- **Need to update ProductCard to use image when available**
+
+---
+
+### 4. **Missing Dependencies**
+
+**Documentation requires:**
+```json
+"puppeteer": "^x.x.x",
+"sharp": "^x.x.x"
+```
+
+**Your actual `package.json` has:**
+- ✅ `@supabase/supabase-js`: "^2.35.0"
+- ✅ `stripe`: "^12.9.0"
+- ✅ `express`: "^4.18.2"
+- ❌ No `puppeteer`
+- ❌ No `sharp`
+
+**Impact:**
+- Screenshot automation won't work without these packages
+- **Need to install before implementation**
+
+---
+
+### 5. **Project Structure Mismatch**
+
+**Documentation structure:**
 ```
 /scripts
-  ├── screenshot-generator.js      # Main generator
-  ├── upload-to-supabase.js        # Upload helper
-  ├── optimize-images.js           # Image optimization
-  └── batch-generate.js            # Batch processing
+  ├── screenshot-generator.js
+  ├── upload-to-supabase.js
+  ├── optimize-images.js
+  └── batch-generate.js
+```
 
-/templates
-  └── screenshot-template.html     # HTML template for rendering
+**Your actual structure:**
+```
+/src (components)
+/server
+  └── index.js (webhook server only)
+```
 
-/screenshots (temporary)
-  ├── {slug}-desktop.png
-  ├── {slug}-mobile.png
-  └── {slug}-hover.png
+**Impact:**
+- No `/scripts` folder exists
+- Need to create proper folder structure
+- **Screenshot logic should be separate from webhook server**
+
+---
+
+## ✅ Corrected Implementation Plan
+
+### Phase 1: Database Setup (Week 1)
+
+#### 1.1 Create Supabase Schema
+
+**File:** `database/schema.sql`
+
+```sql
+-- Snippets table (if not exists)
+CREATE TABLE IF NOT EXISTS snippets (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  category TEXT,
+  price INTEGER DEFAULT 0,
+  code TEXT,
+  features JSONB,
+  preview_image_url TEXT,
+  screenshot_desktop TEXT,
+  screenshot_mobile TEXT,
+  screenshot_hover TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create storage bucket for screenshots
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('snippet-screenshots', 'snippet-screenshots', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Allow public read access to screenshots
+CREATE POLICY "Public read access"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'snippet-screenshots');
+
+-- Allow authenticated users to upload (for admin)
+CREATE POLICY "Authenticated upload"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'snippet-screenshots' 
+  AND auth.role() = 'authenticated'
+);
+```
+
+#### 1.2 Migrate Existing Data
+
+**File:** `scripts/migrate-snippets.js`
+
+```javascript
+import { createClient } from '@supabase/supabase-js'
+import { snippets } from '../src/data/snippets.ts'
+
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
+
+async function migrateSnippets() {
+  console.log('🔄 Migrating snippets to Supabase...')
+  
+  for (const snippet of snippets) {
+    const { error } = await supabase
+      .from('snippets')
+      .upsert({
+        id: snippet.id,
+        title: snippet.title,
+        description: snippet.description,
+        category: snippet.category,
+        price: snippet.price,
+        code: snippet.code,
+        features: snippet.features,
+        preview_image_url: snippet.image || null
+      })
+    
+    if (error) {
+      console.error(`❌ Failed to migrate ${snippet.id}:`, error)
+    } else {
+      console.log(`✅ Migrated ${snippet.id}`)
+    }
+  }
+  
+  console.log('✅ Migration complete!')
+}
+
+migrateSnippets()
 ```
 
 ---
 
-## Core Implementation
+### Phase 2: Screenshot Generator (Week 2)
 
-### 1. Screenshot Generator (`scripts/screenshot-generator.js`)
+#### 2.1 Install Dependencies
+
+```bash
+npm install puppeteer sharp --save-dev
+```
+
+#### 2.2 Updated Screenshot Generator
+
+**File:** `scripts/screenshot-generator.js`
 
 ```javascript
-const puppeteer = require('puppeteer');
-const fs = require('fs').promises;
-const path = require('path');
+import puppeteer from 'puppeteer'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
 
 /**
- * Generate screenshots for a snippet
- * @param {Object} snippet - Snippet object with code and metadata
- * @param {Object} options - Screenshot options
+ * Generate screenshot for a snippet
+ * Adapted for your single 'code' field structure
  */
-async function generateScreenshots(snippet, options = {}) {
-  const {
-    outputDir = './screenshots',
-    viewports = {
-      desktop: { width: 1920, height: 1080 },
-      mobile: { width: 375, height: 667 }
-    },
-    captureHover = true,
-    debug = false
-  } = options;
+async function generateScreenshot(snippet) {
+  console.log(`📸 Generating screenshot for: ${snippet.title}`)
 
-  console.log(`📸 Generating screenshots for: ${snippet.title}`);
-
-  // Ensure output directory exists
-  await fs.mkdir(outputDir, { recursive: true });
-
-  // Launch browser
   const browser = await puppeteer.launch({
-    headless: !debug,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
+    headless: true,
+    args: ['--no-sandbox']
+  })
 
   try {
-    const page = await browser.newPage();
+    const page = await browser.newPage()
 
-    // Build HTML from snippet
-    const html = buildSnippetHTML(snippet);
-    
-    // Set content
-    await page.setContent(html, { 
-      waitUntil: 'networkidle0',
-      timeout: 10000 
-    });
-
-    // Wait for any animations to settle
-    await page.waitForTimeout(500);
-
-    const screenshots = {};
+    // Build HTML with snippet code
+    const html = buildHTML(snippet)
+    await page.setContent(html, { waitUntil: 'networkidle0' })
+    await page.waitForTimeout(500)
 
     // Desktop screenshot
-    console.log('  📱 Capturing desktop view...');
-    await page.setViewport(viewports.desktop);
+    await page.setViewport({ width: 1920, height: 1080 })
+    await page.waitForTimeout(300)
     
-    // Wait for layout to stabilize
-    await page.waitForTimeout(300);
-    
-    const desktopPath = path.join(outputDir, `${snippet.slug}-desktop.png`);
-    await page.screenshot({
-      path: desktopPath,
+    const screenshotBuffer = await page.screenshot({
+      type: 'png',
       clip: {
-        x: (viewports.desktop.width - 1200) / 2,
+        x: (1920 - 1200) / 2,
         y: 140,
         width: 1200,
         height: 800
       }
-    });
-    screenshots.desktop = desktopPath;
-    console.log('  ✅ Desktop screenshot saved');
+    })
 
-    // Mobile screenshot
-    console.log('  📱 Capturing mobile view...');
-    await page.setViewport(viewports.mobile);
-    await page.waitForTimeout(300);
-    
-    const mobilePath = path.join(outputDir, `${snippet.slug}-mobile.png`);
-    await page.screenshot({
-      path: mobilePath,
-      fullPage: false
-    });
-    screenshots.mobile = mobilePath;
-    console.log('  ✅ Mobile screenshot saved');
+    // Upload to Supabase
+    const filePath = `${snippet.id}/preview-desktop.png`
+    const { data, error } = await supabase.storage
+      .from('snippet-screenshots')
+      .upload(filePath, screenshotBuffer, {
+        contentType: 'image/png',
+        upsert: true
+      })
 
-    // Hover state (if applicable)
-    if (captureHover && snippet.has_hover_state) {
-      console.log('  📱 Capturing hover state...');
-      await page.setViewport(viewports.desktop);
-      
-      // Find hoverable element (customize selector per snippet type)
-      const hoverSelector = snippet.hover_selector || '.hoverable, a, button';
-      
-      try {
-        await page.hover(hoverSelector);
-        await page.waitForTimeout(500); // Wait for hover animation
-        
-        const hoverPath = path.join(outputDir, `${snippet.slug}-hover.png`);
-        await page.screenshot({
-          path: hoverPath,
-          clip: {
-            x: (viewports.desktop.width - 1200) / 2,
-            y: 140,
-            width: 1200,
-            height: 800
-          }
-        });
-        screenshots.hover = hoverPath;
-        console.log('  ✅ Hover screenshot saved');
-      } catch (err) {
-        console.log('  ⚠️  Hover state capture skipped (element not found)');
-      }
-    }
+    if (error) throw error
 
-    return screenshots;
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('snippet-screenshots')
+      .getPublicUrl(filePath)
+
+    // Update snippet record
+    await supabase
+      .from('snippets')
+      .update({ 
+        preview_image_url: publicUrl,
+        screenshot_desktop: publicUrl 
+      })
+      .eq('id', snippet.id)
+
+    console.log(`✅ Screenshot saved: ${publicUrl}`)
+    return publicUrl
 
   } catch (error) {
-    console.error('❌ Screenshot generation failed:', error);
-    throw error;
+    console.error(`❌ Failed for ${snippet.id}:`, error)
+    throw error
   } finally {
-    await browser.close();
+    await browser.close()
   }
 }
 
 /**
- * Build HTML document from snippet code
+ * Build HTML from snippet code
+ * Since you have a single 'code' field, we detect type by content
  */
-function buildSnippetHTML(snippet) {
+function buildHTML(snippet) {
+  const code = snippet.code || ''
+  
+  // Detect if code contains CSS, JS, or is pure HTML/Liquid
+  const hasCSS = code.includes('<style>') || code.includes('.') && code.includes('{')
+  const hasJS = code.includes('<script>') || code.includes('function') || code.includes('=>')
+  
+  // Extract or wrap appropriately
+  let cssCode = ''
+  let jsCode = ''
+  let htmlCode = code
+
+  if (hasCSS && code.includes('<style>')) {
+    const styleMatch = code.match(/<style>([\s\S]*?)<\/style>/i)
+    if (styleMatch) cssCode = styleMatch[1]
+  }
+
+  if (hasJS && code.includes('<script>')) {
+    const scriptMatch = code.match(/<script>([\s\S]*?)<\/script>/i)
+    if (scriptMatch) jsCode = scriptMatch[1]
+  }
+
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -178,540 +340,309 @@ function buildSnippetHTML(snippet) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${snippet.title}</title>
   <style>
-    /* Reset */
-    *, *::before, *::after {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    /* Base styles (Shopify-like) */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 
-                   'Helvetica', 'Arial', sans-serif;
-      font-size: 16px;
-      line-height: 1.6;
-      color: #000000;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: #ffffff;
+      color: #000000;
       padding: 40px 20px;
     }
-
-    /* Container */
-    .snippet-container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    /* Snippet-specific CSS */
-    ${snippet.css_code || ''}
+    .container { max-width: 1200px; margin: 0 auto; }
+    ${cssCode}
   </style>
 </head>
 <body>
-  <div class="snippet-container">
-    ${snippet.liquid_code}
+  <div class="container">
+    ${htmlCode}
   </div>
-
-  <script>
-    // Snippet-specific JavaScript
-    ${snippet.javascript_code || ''}
-  </script>
+  <script>${jsCode}</script>
 </body>
 </html>
-  `.trim();
+  `.trim()
 }
 
-module.exports = { generateScreenshots };
+export { generateScreenshot }
 ```
 
----
+#### 2.3 Batch Generator
 
-### 2. Supabase Upload Helper (`scripts/upload-to-supabase.js`)
+**File:** `scripts/batch-generate.js`
 
 ```javascript
-const { createClient } = require('@supabase/supabase-js');
-const fs = require('fs').promises;
-const path = require('path');
-require('dotenv').config();
+import { createClient } from '@supabase/supabase-js'
+import { generateScreenshot } from './screenshot-generator.js'
 
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY // Use service role for admin operations
-);
-
-/**
- * Upload screenshots to Supabase Storage
- * @param {string} snippetSlug - Snippet slug
- * @param {Object} screenshots - Object with paths to screenshot files
- * @returns {Object} - Public URLs of uploaded images
- */
-async function uploadScreenshots(snippetSlug, screenshots) {
-  console.log(`☁️  Uploading screenshots for: ${snippetSlug}`);
-
-  const urls = {};
-
-  for (const [type, filePath] of Object.entries(screenshots)) {
-    try {
-      // Read file
-      const fileBuffer = await fs.readFile(filePath);
-      
-      // Define storage path
-      const storagePath = `snippets/${snippetSlug}/preview-${type}.png`;
-
-      // Upload to Supabase Storage
-      const { data, error } = await supabase.storage
-        .from('snippet-assets')
-        .upload(storagePath, fileBuffer, {
-          contentType: 'image/png',
-          upsert: true // Replace if exists
-        });
-
-      if (error) throw error;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('snippet-assets')
-        .getPublicUrl(storagePath);
-
-      urls[type] = publicUrl;
-      console.log(`  ✅ Uploaded ${type}: ${publicUrl}`);
-
-    } catch (error) {
-      console.error(`  ❌ Failed to upload ${type}:`, error.message);
-    }
-  }
-
-  return urls;
-}
-
-/**
- * Update snippet record with screenshot URLs
- */
-async function updateSnippetURLs(snippetId, urls) {
-  const { error } = await supabase
-    .from('snippets')
-    .update({
-      preview_image_url: urls.desktop,
-      screenshots: [urls.desktop, urls.mobile, urls.hover].filter(Boolean)
-    })
-    .eq('id', snippetId);
-
-  if (error) {
-    console.error('❌ Failed to update snippet record:', error);
-    throw error;
-  }
-
-  console.log('✅ Snippet record updated with URLs');
-}
-
-module.exports = { uploadScreenshots, updateSnippetURLs };
-```
-
----
-
-### 3. Image Optimization (`scripts/optimize-images.js`)
-
-```javascript
-const sharp = require('sharp');
-const fs = require('fs').promises;
-const path = require('path');
-
-/**
- * Optimize a single image
- */
-async function optimizeImage(inputPath, outputPath) {
-  const stats = await fs.stat(inputPath);
-  const originalSize = stats.size;
-
-  await sharp(inputPath)
-    .png({
-      quality: 90,
-      compressionLevel: 9,
-      adaptiveFiltering: true
-    })
-    .toFile(outputPath || inputPath);
-
-  const newStats = await fs.stat(outputPath || inputPath);
-  const newSize = newStats.size;
-  const savings = ((originalSize - newSize) / originalSize * 100).toFixed(1);
-
-  console.log(`  📦 Optimized: ${path.basename(inputPath)}`);
-  console.log(`     ${(originalSize / 1024).toFixed(1)}KB → ${(newSize / 1024).toFixed(1)}KB (${savings}% smaller)`);
-
-  return { originalSize, newSize, savings };
-}
-
-/**
- * Optimize all screenshots in a directory
- */
-async function optimizeAllScreenshots(directory) {
-  console.log(`🔧 Optimizing images in: ${directory}`);
-
-  const files = await fs.readdir(directory);
-  const pngFiles = files.filter(f => f.endsWith('.png'));
-
-  let totalOriginal = 0;
-  let totalNew = 0;
-
-  for (const file of pngFiles) {
-    const filePath = path.join(directory, file);
-    const { originalSize, newSize } = await optimizeImage(filePath);
-    totalOriginal += originalSize;
-    totalNew += newSize;
-  }
-
-  const totalSavings = ((totalOriginal - totalNew) / totalOriginal * 100).toFixed(1);
-  console.log(`\n✅ Total optimization: ${(totalOriginal / 1024).toFixed(1)}KB → ${(totalNew / 1024).toFixed(1)}KB (${totalSavings}% reduction)`);
-}
-
-module.exports = { optimizeImage, optimizeAllScreenshots };
-```
-
----
-
-### 4. Batch Processing (`scripts/batch-generate.js`)
-
-```javascript
-const { createClient } = require('@supabase/supabase-js');
-const { generateScreenshots } = require('./screenshot-generator');
-const { uploadScreenshots, updateSnippetURLs } = require('./upload-to-supabase');
-const { optimizeAllScreenshots } = require('./optimize-images');
-require('dotenv').config();
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
+  process.env.VITE_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+)
 
-/**
- * Generate screenshots for all published snippets
- */
-async function batchGenerateAll() {
-  console.log('🚀 Starting batch screenshot generation...\n');
+async function generateAll() {
+  console.log('🚀 Batch generating screenshots...\n')
 
-  // Fetch all published snippets
   const { data: snippets, error } = await supabase
     .from('snippets')
     .select('*')
-    .eq('is_published', true)
-    .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('❌ Failed to fetch snippets:', error);
-    return;
+    console.error('❌ Failed to fetch snippets:', error)
+    return
   }
 
-  console.log(`📋 Found ${snippets.length} snippets to process\n`);
+  console.log(`📋 Found ${snippets.length} snippets\n`)
 
-  let successful = 0;
-  let failed = 0;
+  let success = 0
+  let failed = 0
 
   for (const snippet of snippets) {
     try {
-      console.log(`\n${'='.repeat(60)}`);
-      console.log(`Processing: ${snippet.title} (${snippet.slug})`);
-      console.log('='.repeat(60));
-
-      // Generate screenshots
-      const screenshots = await generateScreenshots(snippet, {
-        outputDir: './screenshots',
-        captureHover: true
-      });
-
-      // Optimize images
-      console.log('\n🔧 Optimizing images...');
-      await optimizeAllScreenshots('./screenshots');
-
-      // Upload to Supabase
-      const urls = await uploadScreenshots(snippet.slug, screenshots);
-
-      // Update snippet record
-      await updateSnippetURLs(snippet.id, urls);
-
-      successful++;
-      console.log(`\n✅ Completed: ${snippet.title}\n`);
-
-    } catch (error) {
-      failed++;
-      console.error(`\n❌ Failed: ${snippet.title}`);
-      console.error(`   Error: ${error.message}\n`);
+      await generateScreenshot(snippet)
+      success++
+    } catch (err) {
+      console.error(`Failed: ${snippet.id}`, err.message)
+      failed++
     }
   }
 
-  console.log('\n' + '='.repeat(60));
-  console.log('📊 Batch Generation Summary');
-  console.log('='.repeat(60));
-  console.log(`Total snippets: ${snippets.length}`);
-  console.log(`Successful: ${successful}`);
-  console.log(`Failed: ${failed}`);
-  console.log('='.repeat(60));
+  console.log(`\n✅ Complete: ${success} success, ${failed} failed`)
 }
 
-/**
- * Generate screenshots for a single snippet by slug
- */
-async function generateForSnippet(slug) {
-  console.log(`🎯 Generating screenshots for: ${slug}\n`);
-
-  // Fetch snippet
-  const { data: snippet, error } = await supabase
-    .from('snippets')
-    .select('*')
-    .eq('slug', slug)
-    .single();
-
-  if (error) {
-    console.error('❌ Snippet not found:', error);
-    return;
-  }
-
-  try {
-    // Generate
-    const screenshots = await generateScreenshots(snippet);
-
-    // Optimize
-    await optimizeAllScreenshots('./screenshots');
-
-    // Upload
-    const urls = await uploadScreenshots(snippet.slug, screenshots);
-
-    // Update
-    await updateSnippetURLs(snippet.id, urls);
-
-    console.log('\n✅ Screenshot generation complete!');
-
-  } catch (error) {
-    console.error('\n❌ Generation failed:', error);
-  }
-}
-
-// CLI execution
-if (require.main === module) {
-  const args = process.argv.slice(2);
-  
-  if (args.includes('--all')) {
-    batchGenerateAll();
-  } else if (args.includes('--slug')) {
-    const slugIndex = args.indexOf('--slug');
-    const slug = args[slugIndex + 1];
-    if (slug) {
-      generateForSnippet(slug);
-    } else {
-      console.error('❌ Please provide a slug: --slug <snippet-slug>');
-    }
-  } else {
-    console.log(`
-Usage:
-  node scripts/batch-generate.js --all              Generate for all snippets
-  node scripts/batch-generate.js --slug mega-menu   Generate for specific snippet
-    `);
-  }
-}
-
-module.exports = { batchGenerateAll, generateForSnippet };
+generateAll()
 ```
 
 ---
 
-## Environment Setup
+### Phase 3: Update UI Components (Week 2)
 
-### `.env` File
+#### 3.1 Update ProductCard to Use Screenshots
+
+**File:** `src/components/ProductCard.tsx` (update lines 33-39)
+
+```tsx
+<div className="aspect-[16/10] bg-secondary flex items-center justify-center overflow-hidden">
+  {snippet.image ? (
+    <img 
+      src={snippet.image} 
+      alt={snippet.title}
+      className="w-full h-full object-cover"
+    />
+  ) : (
+    <div className="p-6 font-mono text-xs leading-relaxed text-muted-foreground opacity-60 group-hover:opacity-80 transition-opacity">
+      <pre className="whitespace-pre-wrap line-clamp-6">
+        {snippet.code.slice(0, 200)}...
+      </pre>
+    </div>
+  )}
+</div>
+```
+
+#### 3.2 Fetch Snippets from Supabase
+
+**File:** `src/hooks/useSnippets.ts` (new file)
+
+```typescript
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import type { Snippet } from '@/data/snippets'
+
+export function useSnippets() {
+  const [snippets, setSnippets] = useState<Snippet[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchSnippets() {
+      const { data, error } = await supabase
+        .from('snippets')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Failed to fetch snippets:', error)
+      } else {
+        setSnippets(data || [])
+      }
+      setLoading(false)
+    }
+
+    fetchSnippets()
+  }, [])
+
+  return { snippets, loading }
+}
+```
+
+#### 3.3 Update Index.tsx to Use Hook
+
+**File:** `src/pages/Index.tsx` (replace hardcoded snippets)
+
+```tsx
+import { useSnippets } from '@/hooks/useSnippets'
+
+function Index() {
+  const { snippets, loading } = useSnippets()
+  
+  if (loading) return <div>Loading...</div>
+  
+  // ... rest of component
+}
+```
+
+---
+
+### Phase 4: Admin Integration (Week 3)
+
+#### 4.1 Add Screenshot Generation Trigger
+
+**File:** `server/index.js` (add new endpoint)
+
+```javascript
+import { generateScreenshot } from '../scripts/screenshot-generator.js'
+
+// Trigger screenshot generation for a snippet
+app.post('/admin/generate-screenshot/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    // Fetch snippet from database
+    const { data: snippet } = await supabase
+      .from('snippets')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (!snippet) {
+      return res.status(404).json({ error: 'Snippet not found' })
+    }
+
+    // Generate screenshot (async, don't wait)
+    generateScreenshot(snippet)
+      .catch(err => console.error('Screenshot generation failed:', err))
+
+    res.json({ success: true, message: 'Screenshot generation started' })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+```
+
+---
+
+## 📋 Updated File Structure
+
+```
+liquidmktplace/
+├── src/
+│   ├── components/
+│   │   └── ProductCard.tsx      (✅ Updated to use images)
+│   ├── hooks/
+│   │   └── useSnippets.ts       (✅ New - fetch from Supabase)
+│   ├── data/
+│   │   └── snippets.ts          (⚠️ Keep for fallback/dev)
+│   └── lib/
+│       └── supabase.ts          (✅ Supabase client)
+├── server/
+│   └── index.js                 (✅ Add screenshot endpoint)
+├── scripts/                     (✅ NEW)
+│   ├── migrate-snippets.js
+│   ├── screenshot-generator.js
+│   ├── batch-generate.js
+│   └── optimize-images.js
+├── database/                    (✅ NEW)
+│   └── schema.sql
+└── package.json                 (✅ Add puppeteer, sharp)
+```
+
+---
+
+## 🎯 Immediate Action Items
+
+### Week 1: Foundation
+- [ ] Run `npm install puppeteer sharp --save-dev`
+- [ ] Create `database/schema.sql` and run in Supabase
+- [ ] Create `scripts/` folder
+- [ ] Create `scripts/migrate-snippets.js`
+- [ ] Run migration to populate Supabase
+
+### Week 2: Automation
+- [ ] Create `scripts/screenshot-generator.js` (corrected version)
+- [ ] Create `scripts/batch-generate.js`
+- [ ] Test with one snippet manually
+- [ ] Run batch generation for all snippets
+- [ ] Verify images in Supabase Storage
+
+### Week 3: Integration
+- [ ] Update `ProductCard.tsx` to use images
+- [ ] Create `useSnippets` hook
+- [ ] Update `Index.tsx` to fetch from Supabase
+- [ ] Add admin screenshot generation endpoint
+- [ ] Test end-to-end flow
+
+---
+
+## 🔍 Testing Checklist
+
+Before deploying:
+
+- [ ] Verify Supabase bucket `snippet-screenshots` exists
+- [ ] Test screenshot generation for one snippet
+- [ ] Verify public URL is accessible
+- [ ] Check image displays in ProductCard
+- [ ] Test batch generation doesn't crash
+- [ ] Verify all snippets have screenshots
+- [ ] Check file sizes (< 500KB each)
+
+---
+
+## ⚠️ Critical Environment Variables
+
+Add to `.env`:
 
 ```bash
 # Supabase
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-# Screenshot settings
-SCREENSHOT_OUTPUT_DIR=./screenshots
-SCREENSHOT_DEBUG=false
+# Stripe
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PRICE_MONTHLY=price_...
+STRIPE_PRICE_YEARLY=price_...
 ```
 
 ---
 
-## Usage
+## 📝 Summary of Changes
 
-### Generate for Single Snippet
-
-```bash
-node scripts/batch-generate.js --slug mega-menu
-```
-
-### Generate for All Snippets
-
-```bash
-node scripts/batch-generate.js --all
-```
-
-### Optimize Existing Images
-
-```bash
-node -e "require('./scripts/optimize-images').optimizeAllScreenshots('./screenshots')"
-```
+| Documentation Assumption | Your Actual Setup | Required Fix |
+|-------------------------|-------------------|--------------|
+| Separate code fields (liquid/css/js) | Single `code` field | Parse code or restructure |
+| Supabase database with snippets table | Hardcoded array | Migrate to database |
+| Storage bucket exists | Unknown | Create bucket |
+| `preview_image_url` field | `image` field (empty) | Add database field |
+| Puppeteer installed | Not installed | `npm install` |
+| `/scripts` folder | Doesn't exist | Create folder |
 
 ---
 
-## Integration with Admin Panel
+## 🚀 Success Metrics
 
-### Trigger on Snippet Creation
+After implementation:
 
-```javascript
-// In your admin snippet creation endpoint
-app.post('/api/admin/snippets', async (req, res) => {
-  // 1. Save snippet to database
-  const { data: snippet } = await supabase
-    .from('snippets')
-    .insert(req.body)
-    .select()
-    .single();
-
-  // 2. Trigger screenshot generation (async)
-  generateForSnippet(snippet.slug)
-    .catch(err => console.error('Screenshot generation failed:', err));
-
-  // 3. Return immediately (don't wait for screenshots)
-  res.json({ success: true, snippet });
-});
-```
-
-### Background Job (Recommended)
-
-Use a job queue for production:
-
-```javascript
-// Using Bull (Redis-based queue)
-const Queue = require('bull');
-const screenshotQueue = new Queue('screenshots');
-
-screenshotQueue.process(async (job) => {
-  const { slug } = job.data;
-  await generateForSnippet(slug);
-});
-
-// Trigger job
-app.post('/api/admin/snippets', async (req, res) => {
-  const snippet = await createSnippet(req.body);
-  
-  await screenshotQueue.add({ slug: snippet.slug });
-  
-  res.json({ success: true, snippet });
-});
-```
-
----
-
-## Testing
-
-### Test Suite
-
-```javascript
-// tests/screenshot-generator.test.js
-const { generateScreenshots } = require('../scripts/screenshot-generator');
-
-const mockSnippet = {
-  slug: 'test-snippet',
-  title: 'Test Snippet',
-  liquid_code: '<div class="test">Hello World</div>',
-  css_code: '.test { color: red; font-size: 24px; }',
-  javascript_code: ''
-};
-
-describe('Screenshot Generator', () => {
-  it('should generate desktop screenshot', async () => {
-    const screenshots = await generateScreenshots(mockSnippet, {
-      outputDir: './test-screenshots'
-    });
-
-    expect(screenshots.desktop).toBeDefined();
-    expect(fs.existsSync(screenshots.desktop)).toBe(true);
-  });
-
-  it('should generate mobile screenshot', async () => {
-    const screenshots = await generateScreenshots(mockSnippet);
-    expect(screenshots.mobile).toBeDefined();
-  });
-});
-```
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**1. "Browser failed to launch"**
-```bash
-# Install system dependencies (Ubuntu/Debian)
-sudo apt-get install -y chromium-browser
-
-# Or use bundled Chromium
-PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false npm install puppeteer
-```
-
-**2. "Screenshot is blank"**
-```javascript
-// Add longer wait times
-await page.waitForTimeout(2000);
-await page.waitForNetworkIdle();
-```
-
-**3. "Element not found for hover"**
-```javascript
-// Make hover selector more specific
-const hoverSelector = snippet.hover_selector || 'a:first-child';
-const element = await page.$(hoverSelector);
-if (element) await element.hover();
-```
-
-**4. "Upload fails to Supabase"**
-```bash
-# Check storage bucket exists
-# Check RLS policies allow service role uploads
-# Verify SUPABASE_SERVICE_ROLE_KEY is correct
-```
-
----
-
-## Performance Optimization
-
-### Parallel Processing
-
-```javascript
-// Process multiple snippets in parallel
-const chunks = chunkArray(snippets, 3); // 3 at a time
-
-for (const chunk of chunks) {
-  await Promise.all(
-    chunk.map(snippet => generateForSnippet(snippet.slug))
-  );
-}
-```
-
-### Browser Reuse
-
-```javascript
-// Keep browser instance alive between screenshots
-let browser;
-
-async function getOrCreateBrowser() {
-  if (!browser) {
-    browser = await puppeteer.launch();
-  }
-  return browser;
-}
-
-// Close on process exit
-process.on('exit', () => {
-  if (browser) browser.close();
-});
-```
+- ✅ All snippets have real screenshots
+- ✅ Screenshots load from Supabase CDN
+- ✅ ProductCard displays images instead of code
+- ✅ Admin can regenerate screenshots on demand
+- ✅ File sizes < 500KB per screenshot
+- ✅ Page load time < 2s
 
 ---
 
 ## Next Steps
 
-1. **Week 1:** Manual screenshots for first 10 snippets
-2. **Week 2:** Implement and test automation scripts
-3. **Week 3:** Batch generate for all existing snippets
-4. **Week 4:** Integrate with admin panel for new snippets
-5. **Ongoing:** Monitor quality and optimize as needed
+1. Review this audit
+2. Confirm Supabase setup (URL, keys, database access)
+3. Start with Week 1 tasks
+4. Test incrementally (don't batch generate until tested)
+5. Update documentation after successful implementation
+
+Would you like me to proceed with creating the corrected scripts based on this audit?

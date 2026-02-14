@@ -8,7 +8,7 @@ import auth from "@/lib/auth";
 import { getFavoritesCount } from '@/lib/favorites'
 
 const Navbar = () => {
-  const { session } = useSession();
+  const { session, loading } = useSession();
   const [email, setEmail] = useState<string | null>(null);
   const [favCount, setFavCount] = useState(0)
   const [favLoading, setFavLoading] = useState(false)
@@ -38,6 +38,11 @@ const Navbar = () => {
   }, [session])
 
   const [open, setOpen] = useState(false)
+
+  if (loading) {
+    // Optionally, show a spinner or nothing while session is loading
+    return null;
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-lg">

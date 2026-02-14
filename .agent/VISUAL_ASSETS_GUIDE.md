@@ -65,25 +65,7 @@ marketing/social-og-image.png
 
 ---
 
-## Production Strategy
-
-### Phase 1: MVP Launch (Week 1-2)
-**Goal:** Get first 10 snippets live with real screenshots
-
-**Method:** Manual Shopify Screenshots
-- Create test Shopify store (Partner account, free)
-- Use Dawn theme (clean, modern default)
-- Install snippet code manually
-- Take screenshots at standard sizes
-- Basic editing in browser DevTools
-
-**Time Investment:** 15-30 minutes per snippet
-
-**Deliverable:** 10 snippets with real screenshots
-
----
-
-### Phase 2: Automation (Week 3-4)
+### Phase 1: Automation (Week 3-4)
 **Goal:** Build automated screenshot generator
 
 **Method:** Puppeteer/Playwright Script
@@ -99,7 +81,7 @@ marketing/social-og-image.png
 
 ---
 
-### Phase 3: Premium Polish (Week 5-6)
+### Phase 2: Premium Polish (Week 5-6)
 **Goal:** Add marketing visuals for brand elevation
 
 **Method:** AI-Generated Art (Gemini, Midjourney, Claude Artifacts)
@@ -154,24 +136,6 @@ Size: < 2MB
 ```
 
 ---
-
-## Manual Screenshot Process
-
-### Setup (One-Time)
-
-1. **Create Shopify Partner Account**
-   - Go to https://partners.shopify.com
-   - Sign up for free account
-   - Create development store
-
-2. **Install Dawn Theme**
-   - Use latest Dawn theme (free, modern)
-   - Minimal customization for clean screenshots
-
-3. **Prepare Screenshot Tools**
-   - Browser: Chrome/Firefox (consistent)
-   - Extensions: Full Page Screen Capture
-   - Editor: Browser DevTools (resize viewport)
 
 ### Per-Snippet Workflow
 

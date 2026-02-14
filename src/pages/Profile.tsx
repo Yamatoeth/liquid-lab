@@ -10,9 +10,9 @@ import ErrorAlert from '@/components/ui/ErrorAlert'
 import useRealtimeProfile from '@/hooks/useRealtimeProfile'
 
 export default function Profile() {
-  const { session } = useSession()
+  const { session, loading } = useSession()
   const { toast } = useToast()
-  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [profile, setProfile] = useState<any>(null)
   const [name, setName] = useState('')
@@ -29,9 +29,14 @@ export default function Profile() {
     if (realtimeError) setError(realtimeError)
   }, [realtimeProfile, realtimeError])
 
+  if (loading) {
+    // Optionally, show a spinner or nothing while session is loading
+    return null;
+  }
+
   const handleSave = async () => {
     if (!session?.user?.id) return
-    setLoading(true)
+    setSaving(true)
     setError(null)
     try {
       const updates = {
@@ -49,7 +54,7 @@ export default function Profile() {
       setError(e?.message || 'Failed to save')
       toast({ title: 'Save failed', description: e?.message || 'Please try again.' })
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
 

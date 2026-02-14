@@ -185,22 +185,51 @@ const ProductDetail = () => {
                 </div>
 
                 <div className="relative">
-                  <SyntaxHighlighter code={snippet.code} language="liquid" />
-
+                  <div
+                    className="max-h-[480px] overflow-auto bg-black rounded-b-2xl"
+                  >
+                    <SyntaxHighlighter code={snippet.code} language="liquid" />
+                  </div>
                   {!purchased && (
-                    <div className="absolute inset-0 flex items-end">
+                    <div className="absolute inset-0 flex items-end pointer-events-none">
                       <div className="w-full p-6 text-center bg-background/90 backdrop-blur-sm rounded-t-2xl shadow-lg md:bg-transparent md:backdrop-blur-0 md:rounded-none md:shadow-none">
                         <Lock className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
                         <p className="text-sm font-medium">Purchase to unlock full code</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        {/* <p className="mt-1 text-xs text-muted-foreground">
                           Buy for ${snippet.price} or subscribe for full access
-                        </p>
+                        </p> */}
                       </div>
                     </div>
                   )}
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Guidelines Section */}
+          <div className="mt-12 rounded-2xl border bg-secondary/50 p-8">
+            <h2 className="text-xl font-bold mb-4">Setup & Customization Guidelines</h2>
+            <p className="mb-4 text-muted-foreground">
+              Here you'll find instructions on how to set up and modify this snippet. 
+              You can easily change colors, sizes, and other properties to fit your store's design.
+            </p>
+            <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+              <li>
+                <span className="font-semibold">Setup:</span> Copy the code and paste it into your Shopify theme file as instructed.
+              </li>
+              <li>
+                <span className="font-semibold">Color:</span> Look for variables or CSS classes in the snippet to adjust color values.
+              </li>
+              <li>
+                <span className="font-semibold">Size:</span> Change width, height, or font-size properties as needed.
+              </li>
+              <li>
+                <span className="font-semibold">Customization:</span> Refer to comments in the code for further customization options.
+              </li>
+              <li>
+                <span className="font-semibold">Support:</span> If you need help, contact us or check our documentation.
+              </li>
+            </ul>
           </div>
         </div>
       </main>

@@ -31,11 +31,21 @@ const ProductCard = ({ snippet }: ProductCardProps) => {
       className="group flex flex-col overflow-hidden rounded-2xl border bg-card transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
     >
       <div className="aspect-[16/10] bg-secondary flex items-center justify-center overflow-hidden">
-        <div className="p-6 font-mono text-xs leading-relaxed text-muted-foreground opacity-60 group-hover:opacity-80 transition-opacity">
-          <pre className="whitespace-pre-wrap line-clamp-6">
-            {snippet.code.slice(0, 200)}...
-          </pre>
-        </div>
+        {snippet.images && snippet.images[0] ? (
+          <img
+            src={`/snippets/${snippet.images[0]}`}
+            alt={snippet.title}
+            className="w-full h-full object-contain"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = '/snippets/placeholder.png';
+            }}
+          />
+        ) : (
+          <div className="p-6 font-mono text-xs leading-relaxed text-muted-foreground opacity-60 group-hover:opacity-80 transition-opacity">
+            <span>No image</span>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-5">

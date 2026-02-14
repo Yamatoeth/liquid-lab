@@ -13,8 +13,8 @@ export const supabase = createClient(
   {
     auth: {
       persistSession: true,
-      // disable automatic URL session handling to avoid inline-script/CSP issues
-      detectSessionInUrl: false,
+      // enable automatic URL session handling for OAuth
+      detectSessionInUrl: true,
     },
   }
 );
